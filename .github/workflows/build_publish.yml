@@ -80,15 +80,25 @@ jobs:
         run: xcodebuild -version
       # Add Android keystore when configured
       - name: Setup Android keystore
-        if: ${{ matrix.target == 'Android' && secrets.ENCODED_KEYSTORE != '' && secrets.KEY_PROPERTIES != '' }}
+        if: matrix.target == 'Android'
+        shell: bash
+        env:
+          ENCODED_KEYSTORE: ${{ secrets.ENCODED_KEYSTORE }}
+          KEY_PROPERTIES: ${{ secrets.KEY_PROPERTIES }}
         run: |
-          echo "${{ secrets.ENCODED_KEYSTORE }}" | base64 -di > android/app/upload-keystore.jks
-          echo "${{ secrets.KEY_PROPERTIES }}" > android/key.properties
+          if [ -n "$ENCODED_KEYSTORE" ] && [ -n "$KEY_PROPERTIES" ]; then
+            echo "$ENCODED_KEYSTORE" | base64 -di > android/app/upload-keystore.jks
+            printf '%s\n' "$KEY_PROPERTIES" > android/key.properties
+          fi
       # Add JHenTai api secret only when configured, preserving checked-in fallback
       - name: Setup JHenTai API Secret
-        if: ${{ secrets.JH_API_SECRET_CONFIG != '' }}
+        shell: bash
+        env:
+          JH_API_SECRET_CONFIG: ${{ secrets.JH_API_SECRET_CONFIG }}
         run: |
-          echo "${{ secrets.JH_API_SECRET_CONFIG }}" > lib/src/config/jh_api_secret_config.dart
+          if [ -n "$JH_API_SECRET_CONFIG" ]; then
+            printf '%s\n' "$JH_API_SECRET_CONFIG" > lib/src/config/jh_api_secret_config.dart
+          fi
       # Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -106,7 +116,7 @@ jobs:
         with:
           key: ${{ matrix.cache_pod_key }}
           path: ${{ matrix.cache_pod_path }}
-          restore-keys: ${{ matrix.cache_key }}-${{ hashFiles(matrix.cache_pod_restore_keys_hash_file)}}
+          restore-keys: ${{ matrix.cache_pod_key }}-${{ hashFiles(matrix.cache_pod_restore_keys_hash_file)}}
       # Setup JDK
       - name: Setup JDK 17 (Android)
         if: matrix.target == 'Android'
