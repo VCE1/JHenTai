@@ -404,6 +404,8 @@ class pt_BR {
       'showAllGalleryTitlesHint': 'Show both original and japanese titles if available',
       'showGalleryTagVoteStatus': 'Show Gallery Tag Vote Status',
       'showGalleryTagVoteStatusHint': 'Include confidence, skepticism and incorrect',
+      'hideGalleryRating': 'Ocultar avaliação da galeria',
+      'hideGalleryRatingHint': 'Quando ativado, oculta as avaliações das galerias nas listas e detalhes',
       'showComments': 'Show Comments',
       'showCommentsHint': 'When disabled, comments are hidden in details page, but you can still tap All Comments to view them',
       'showAllComments': 'Show All Comments',

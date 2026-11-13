@@ -403,6 +403,8 @@ class zh_CN {
       'showAllGalleryTitlesHint': '同时显示原标题和日文标题（如果可用）',
       'showGalleryTagVoteStatus': '显示画廊标签投票状态',
       'showGalleryTagVoteStatusHint': '包括可信、存疑与错误三种状态',
+      'hideGalleryRating': '屏蔽画廊评分',
+      'hideGalleryRatingHint': '开启后在画廊列表与详情页中隐藏评分信息',
       'showComments': '显示画廊评论',
       'showCommentsHint': '关闭后详情页不再展示评论列表，但仍可点击所有评论进入评论页',
       'showAllComments': '显示画廊所有评论',

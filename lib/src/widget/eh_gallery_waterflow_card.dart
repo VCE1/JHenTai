@@ -8,6 +8,7 @@ import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:get/get.dart';
 import 'package:jhentai/src/extension/string_extension.dart';
 import 'package:jhentai/src/extension/widget_extension.dart';
+import 'package:jhentai/src/setting/preference_setting.dart';
 import 'package:jhentai/src/setting/style_setting.dart';
 import 'package:waterfall_flow/waterfall_flow.dart';
 
@@ -194,16 +195,21 @@ class EHGalleryWaterFlowCard extends StatelessWidget {
   Widget _buildLanguage() => Text(LocaleConsts.language2Abbreviation[gallery.language] ?? '', style: const TextStyle(fontSize: 9));
 
   Widget _buildRatingBar(BuildContext context) {
-    return RatingBar.builder(
-      unratedColor: UIConfig.galleryRatingStarUnRatedColor(context),
-      initialRating: gallery.rating,
-      itemCount: 5,
-      allowHalfRating: true,
-      itemSize: 11,
-      ignoreGestures: true,
-      itemBuilder: (context, _) => Icon(Icons.star, color: gallery.hasRated ? UIConfig.galleryRatingStarRatedColor(context) : UIConfig.galleryRatingStarColor),
-      onRatingUpdate: (_) {},
-    );
+    return Obx(() {
+      if (preferenceSetting.hideGalleryRating.isTrue) {
+        return const SizedBox.shrink();
+      }
+      return RatingBar.builder(
+        unratedColor: UIConfig.galleryRatingStarUnRatedColor(context),
+        initialRating: gallery.rating,
+        itemCount: 5,
+        allowHalfRating: true,
+        itemSize: 11,
+        ignoreGestures: true,
+        itemBuilder: (context, _) => Icon(Icons.star, color: gallery.hasRated ? UIConfig.galleryRatingStarRatedColor(context) : UIConfig.galleryRatingStarColor),
+        onRatingUpdate: (_) {},
+      );
+    });
   }
 
   Widget _buildCategory() {

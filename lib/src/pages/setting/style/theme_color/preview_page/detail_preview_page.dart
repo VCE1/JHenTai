@@ -14,6 +14,7 @@ import 'package:jhentai/src/model/gallery_url.dart';
 import 'package:jhentai/src/pages/details/details_page.dart';
 import 'package:jhentai/src/pages/details/details_page_logic.dart';
 import 'package:jhentai/src/pages/details/details_page_state.dart';
+import 'package:jhentai/src/setting/preference_setting.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:jhentai/src/widget/keep_alive.dart';
 
@@ -70,68 +71,71 @@ class DetailPreviewPage extends DetailsPage {
         child: SizedBox(
           height: UIConfig.detailsPageActionsHeight,
           child: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) => ListView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-              itemExtent: max(UIConfig.detailsPageActionExtent, (constraints.maxWidth - 15 * 2) / 9),
-              padding: EdgeInsets.zero,
-              children: [
-                IconTextButton(
-                  icon: Icon(Icons.visibility, color: UIConfig.detailsPageActionIconColor(context)),
-                  text: Text(
-                    'read'.tr,
-                    style: TextStyle(
-                      fontSize: UIConfig.detailsPageActionTextSize,
-                      color: UIConfig.detailsPageActionTextColor(context),
-                      height: 1,
+            builder: (BuildContext context, BoxConstraints constraints) => Obx(() {
+              final bool hideRating = preferenceSetting.hideGalleryRating.isTrue;
+              return ListView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                itemExtent: max(UIConfig.detailsPageActionExtent, (constraints.maxWidth - 15 * 2) / (hideRating ? 8 : 9)),
+                padding: EdgeInsets.zero,
+                children: [
+                  IconTextButton(
+                    icon: Icon(Icons.visibility, color: UIConfig.detailsPageActionIconColor(context)),
+                    text: Text(
+                      'read'.tr,
+                      style: TextStyle(
+                        fontSize: UIConfig.detailsPageActionTextSize,
+                        color: UIConfig.detailsPageActionTextColor(context),
+                        height: 1,
+                      ),
                     ),
+                    onPressed: () {},
                   ),
-                  onPressed: () {},
-                ),
-                IconTextButton(
-                  icon: Icon(Icons.download, color: UIConfig.detailsPageActionIconColor(context)),
-                  text: Text(
-                    'download'.tr,
-                    style: TextStyle(
-                      fontSize: UIConfig.detailsPageActionTextSize,
-                      color: UIConfig.detailsPageActionTextColor(context),
-                      height: 1,
+                  IconTextButton(
+                    icon: Icon(Icons.download, color: UIConfig.detailsPageActionIconColor(context)),
+                    text: Text(
+                      'download'.tr,
+                      style: TextStyle(
+                        fontSize: UIConfig.detailsPageActionTextSize,
+                        color: UIConfig.detailsPageActionTextColor(context),
+                        height: 1,
+                      ),
                     ),
+                    onPressed: () {},
                   ),
-                  onPressed: () {},
-                ),
-                IconTextButton(
-                  icon: Icon(
-                    state.galleryDetails!.favoriteTagIndex != null ? Icons.favorite : Icons.favorite_border,
-                    color: UIConfig.detailsPageActionIconColor(context),
-                  ),
-                  text: Text(
-                    'favorite'.tr,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: UIConfig.detailsPageActionTextSize,
-                      color: UIConfig.detailsPageActionTextColor(context),
-                      height: 1,
+                  IconTextButton(
+                    icon: Icon(
+                      state.galleryDetails!.favoriteTagIndex != null ? Icons.favorite : Icons.favorite_border,
+                      color: UIConfig.detailsPageActionIconColor(context),
                     ),
-                  ),
-                  onPressed: () {},
-                ),
-                IconTextButton(
-                  icon: Icon(
-                    state.galleryDetails!.hasRated ? Icons.star : Icons.star_border,
-                    color: state.galleryDetails!.hasRated ? UIConfig.alertColor(context) : UIConfig.detailsPageActionTextColor(context),
-                  ),
-                  text: Text(
-                    state.galleryDetails!.hasRated ? state.galleryDetails!.rating.toString() : 'rating'.tr,
-                    style: TextStyle(
-                      fontSize: UIConfig.detailsPageActionTextSize,
-                      color: UIConfig.detailsPageActionTextColor(context),
-                      height: 1,
+                    text: Text(
+                      'favorite'.tr,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: UIConfig.detailsPageActionTextSize,
+                        color: UIConfig.detailsPageActionTextColor(context),
+                        height: 1,
+                      ),
                     ),
+                    onPressed: () {},
                   ),
-                  onPressed: () {},
-                ),
+                  if (!hideRating)
+                    IconTextButton(
+                      icon: Icon(
+                        state.galleryDetails!.hasRated ? Icons.star : Icons.star_border,
+                        color: state.galleryDetails!.hasRated ? UIConfig.alertColor(context) : UIConfig.detailsPageActionTextColor(context),
+                      ),
+                      text: Text(
+                        state.galleryDetails!.hasRated ? state.galleryDetails!.rating.toString() : 'rating'.tr,
+                        style: TextStyle(
+                          fontSize: UIConfig.detailsPageActionTextSize,
+                          color: UIConfig.detailsPageActionTextColor(context),
+                          height: 1,
+                        ),
+                      ),
+                      onPressed: () {},
+                    ),
                 IconTextButton(
                   icon: Icon(Icons.archive, color: UIConfig.detailsPageActionIconColor(context)),
                   text: Text(
@@ -193,7 +197,8 @@ class DetailPreviewPage extends DetailsPage {
                   onPressed: () {},
                 ),
               ],
-            ),
+            );
+            }),
           ),
         ),
       ),

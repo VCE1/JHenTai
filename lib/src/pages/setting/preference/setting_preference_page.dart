@@ -44,6 +44,7 @@ class SettingPreferencePage extends StatelessWidget {
               if (styleSetting.isInV2Layout) _buildDrawerGestureEdgeWidth(context),
               _buildShowAllGalleryTitles(),
               _buildShowGalleryTagVoteStatus(),
+              _buildHideGalleryRating(),
               _buildShowComments(),
               _buildShowAllComments(),
               _buildEnableDefaultFavorite(),
@@ -346,6 +347,15 @@ class SettingPreferencePage extends StatelessWidget {
       subtitle: Text('showGalleryTagVoteStatusHint'.tr),
       value: preferenceSetting.showGalleryTagVoteStatus.value,
       onChanged: preferenceSetting.saveShowGalleryTagVoteStatus,
+    );
+  }
+
+  Widget _buildHideGalleryRating() {
+    return SwitchListTile(
+      title: Text('hideGalleryRating'.tr),
+      subtitle: Text('hideGalleryRatingHint'.tr),
+      value: preferenceSetting.hideGalleryRating.value,
+      onChanged: preferenceSetting.saveHideGalleryRating,
     );
   }
 

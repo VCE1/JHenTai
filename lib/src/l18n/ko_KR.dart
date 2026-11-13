@@ -403,6 +403,8 @@ class ko_KR {
       'showAllGalleryTitlesHint': 'Show both original and japanese titles if available',
       'showGalleryTagVoteStatus': 'Show Gallery Tag Vote Status',
       'showGalleryTagVoteStatusHint': 'Include confidence, skepticism and incorrect',
+      'hideGalleryRating': '갤러리 평점 숨기기',
+      'hideGalleryRatingHint': '활성화하면 갤러리 목록 및 상세 페이지에서 평점을 숨깁니다',
       'showComments': 'Show Comments',
       'showCommentsHint': 'When disabled, comments are hidden in details page, but you can still tap All Comments to view them',
       'showAllComments': 'Show All Comments',

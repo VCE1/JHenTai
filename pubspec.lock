@@ -855,11 +855,9 @@ packages:
   j_downloader:
     dependency: "direct main"
     description:
-      path: "."
-      ref: HEAD
-      resolved-ref: "8ac5fba3ba7caa71cd60e3ffc24c9755c31e76dd"
-      url: "https://github.com/jiangtian616/JDownloader"
-    source: git
+      path: "packages/j_downloader"
+      relative: true
+    source: path
     version: "0.0.3"
   js:
     dependency: transitive

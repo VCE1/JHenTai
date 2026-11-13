@@ -503,7 +503,14 @@ class DetailsPage extends StatelessWidget with Scroll2TopPageMixin {
               Row(
                 children: [
                   Expanded(flex: 9, child: _buildPageCount(iconSize, space, context)),
-                  Expanded(flex: 7, child: _buildRatingCount(iconSize, space, context)),
+                  Expanded(
+                    flex: 7,
+                    child: Obx(
+                      () => preferenceSetting.hideGalleryRating.isTrue
+                          ? const SizedBox.shrink()
+                          : _buildRatingCount(iconSize, space, context),
+                    ),
+                  ),
                   Expanded(flex: 10, child: _buildPublishTime(iconSize, space, context)),
                 ],
               ),
@@ -525,8 +532,18 @@ class DetailsPage extends StatelessWidget with Scroll2TopPageMixin {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildLanguage(UIConfig.detailsPageInfoIconSize, 2, context),
-              const SizedBox(height: 2),
-              _buildRatingCount(UIConfig.detailsPageInfoIconSize, 2, context),
+              Obx(
+                () => preferenceSetting.hideGalleryRating.isTrue
+                    ? const SizedBox.shrink()
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 2),
+                          _buildRatingCount(UIConfig.detailsPageInfoIconSize, 2, context),
+                        ],
+                      ),
+              ),
               const SizedBox(height: 2),
               _buildPageCount(UIConfig.detailsPageInfoIconSize, 2, context),
             ],
@@ -729,14 +746,18 @@ class DetailsPage extends StatelessWidget with Scroll2TopPageMixin {
   }
 
   Widget _buildRatingAndCategory(BuildContext context) {
-    return Row(
-      children: [
-        _buildRatingBar(context),
-        _buildRealRating(),
-        const SizedBox(height: 1),
-        const Expanded(child: SizedBox()),
-        _buildCategory(),
-      ],
+    return Obx(
+      () => Row(
+        children: [
+          if (preferenceSetting.hideGalleryRating.isFalse) ...[
+            _buildRatingBar(context),
+            _buildRealRating(),
+            const SizedBox(height: 1),
+          ],
+          const Expanded(child: SizedBox()),
+          _buildCategory(),
+        ],
+      ),
     );
   }
 
@@ -875,23 +896,26 @@ class DetailsPage extends StatelessWidget with Scroll2TopPageMixin {
         height: UIConfig.detailsPageActionsHeight,
         margin: const EdgeInsets.only(top: 20, bottom: 16, left: UIConfig.detailPagePadding, right: UIConfig.detailPagePadding),
         child: LayoutBuilder(
-          builder: (_, BoxConstraints constraints) => ListView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-            itemExtent: max(UIConfig.detailsPageActionExtent, (constraints.maxWidth - UIConfig.detailPagePadding * 2) / 8),
-            padding: EdgeInsets.zero,
-            children: [
-              _buildReadButton(context),
-              _buildDownloadButton(context),
-              _buildFavoriteButton(context),
-              _buildRatingButton(context),
-              _buildArchiveButton(context),
-              _buildHHButton(context),
-              _buildSimilarButton(context),
-              _buildTorrentButton(context),
-              // _buildStatisticButton(context),
-            ],
-          ).enableMouseDrag(withScrollBar: false),
+          builder: (_, BoxConstraints constraints) => Obx(() {
+            final bool hideRating = preferenceSetting.hideGalleryRating.isTrue;
+            return ListView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              itemExtent: max(UIConfig.detailsPageActionExtent, (constraints.maxWidth - UIConfig.detailPagePadding * 2) / (hideRating ? 7 : 8)),
+              padding: EdgeInsets.zero,
+              children: [
+                _buildReadButton(context),
+                _buildDownloadButton(context),
+                _buildFavoriteButton(context),
+                if (!hideRating) _buildRatingButton(context),
+                _buildArchiveButton(context),
+                _buildHHButton(context),
+                _buildSimilarButton(context),
+                _buildTorrentButton(context),
+                // _buildStatisticButton(context),
+              ],
+            ).enableMouseDrag(withScrollBar: false);
+          }),
         ),
       ),
     );

@@ -223,19 +223,24 @@ class EHGalleryListCard extends StatelessWidget {
   }
 
   Widget _buildRatingBar(BuildContext context) {
-    return RatingBar.builder(
-      unratedColor: UIConfig.galleryRatingStarUnRatedColor(context),
-      initialRating: gallery.rating,
-      itemCount: 5,
-      allowHalfRating: true,
-      itemSize: 16,
-      ignoreGestures: true,
-      itemBuilder: (context, _) => Icon(
-        Icons.star,
-        color: gallery.hasRated ? UIConfig.galleryRatingStarRatedColor(context) : UIConfig.galleryRatingStarColor,
-      ),
-      onRatingUpdate: (rating) {},
-    );
+    return Obx(() {
+      if (preferenceSetting.hideGalleryRating.isTrue) {
+        return const SizedBox.shrink();
+      }
+      return RatingBar.builder(
+        unratedColor: UIConfig.galleryRatingStarUnRatedColor(context),
+        initialRating: gallery.rating,
+        itemCount: 5,
+        allowHalfRating: true,
+        itemSize: 16,
+        ignoreGestures: true,
+        itemBuilder: (context, _) => Icon(
+          Icons.star,
+          color: gallery.hasRated ? UIConfig.galleryRatingStarRatedColor(context) : UIConfig.galleryRatingStarColor,
+        ),
+        onRatingUpdate: (rating) {},
+      );
+    });
   }
 
   Widget _buildReadingProgress(BuildContext context) {
