@@ -360,21 +360,16 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          shopt -s nullglob
-          ASSETS=(
-            /tmp/artifacts/release-Android/*.apk
-            /tmp/artifacts/release-iOS/*.ipa
-            /tmp/artifacts/release-macOS/*.dmg
-            /tmp/artifacts/release-Windows/*.zip
-            /tmp/artifacts/release-Linux-x64-deb/*.deb
-            /tmp/artifacts/release-Linux-arm64-deb/*.deb
-          )
+          mapfile -t ASSETS < <(find /tmp/artifacts -type f \( -name '*.apk' -o -name '*.ipa' -o -name '*.dmg' -o -name '*.zip' -o -name '*.deb' \) | sort)
           if [ ${#ASSETS[@]} -eq 0 ]; then
             echo "No built release assets found in /tmp/artifacts" >&2
             ls -R /tmp/artifacts || true
             exit 1
           fi
+          echo "Found ${#ASSETS[@]} asset(s):"
+          printf ' - %s\n' "${ASSETS[@]}"
 
           TAG="latest-build"
           SHORT_SHA="${GITHUB_SHA::7}"
