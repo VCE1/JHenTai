@@ -572,6 +572,8 @@ class ru_RU {
       'enableImageMaxKilobytes': 'Включить сжатие изображений',
       'imageMaxKilobytes': 'Макс. размер изображения (КБ)',
       'imageMaxKilobytesHint': 'Изображения больше этого размера будут сжаты',
+      'enableAntiMoireFilter': 'Фильтр анти-муар',
+      'enableAntiMoireFilterHint': 'Адаптивно подавляет муар растровых полутонов при уменьшении и возвращает чёткость при увеличении',
       'image': 'Изображение',
       'screen': 'Экран',
       'preloadDistanceInOnlineMode': 'Дистанция предзагрузки (Онлайн)',

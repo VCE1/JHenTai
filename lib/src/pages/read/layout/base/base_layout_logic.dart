@@ -64,12 +64,22 @@ abstract class BaseLayoutLogic extends GetxController with GetTickerProviderStat
     super.onInit();
   }
 
+  final Map<int, PhotoViewController> _pageScaleControllers = <int, PhotoViewController>{};
+
+  PhotoViewController obtainPageScaleController(int index) {
+    return _pageScaleControllers.putIfAbsent(index, PhotoViewController.new);
+  }
+
   @override
   void onClose() {
     autoModeTimer?.cancel();
     doubleTapGestureSwitcherListener?.dispose();
     tapDragGestureSwitcherListener?.dispose();
     showScrollBarListener?.dispose();
+    for (final PhotoViewController controller in _pageScaleControllers.values) {
+      controller.dispose();
+    }
+    _pageScaleControllers.clear();
     super.onClose();
   }
 

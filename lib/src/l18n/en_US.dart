@@ -566,6 +566,8 @@ class en_US {
       'enableImageMaxKilobytes': 'Enable Image Compression',
       'imageMaxKilobytes': 'Image Max Size',
       'imageMaxKilobytesHint': 'Images larger than this size will be compressed',
+      'enableAntiMoireFilter': 'Anti-Moiré Filter',
+      'enableAntiMoireFilterHint': 'Adaptively suppresses halftone moiré on scaled-down high-DPI pages and restores sharpness when zoomed in',
       'image': 'Image',
       'screen': 'Screen',
       'preloadDistanceInOnlineMode': 'Preload Distance(Online)',

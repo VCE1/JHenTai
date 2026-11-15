@@ -5,7 +5,9 @@ import 'package:get/get.dart';
 import 'package:jhentai/src/extension/get_logic_extension.dart';
 import 'package:jhentai/src/model/read_page_info.dart';
 import 'package:jhentai/src/pages/read/layout/horizontal_double_column/horizontal_double_column_layout_state.dart';
+import 'package:jhentai/src/widget/anti_moire_image.dart';
 import 'package:jhentai/src/widget/eh_wheel_scroll_listener.dart';
+import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 
 import '../../../../service/gallery_download/gallery_download_service.dart';
@@ -38,18 +40,23 @@ class HorizontalDoubleColumnLayout extends BaseLayout {
                   : (readSetting.preloadPageCountLocal.value.toDouble() + 1) / 2,
               reverse: logic.readPageLogic.isInRight2LeftDirection,
               itemCount: state.pageCount,
-              builder: (context, index) => PhotoViewGalleryPageOptions.customChild(
-                initialScale: 1.0,
-                minScale: 1.0,
-                maxScale: 2.5,
-                scaleStateCycle: readSetting.enableDoubleTapToScaleUp.isTrue ? logic.scaleStateCycle : null,
-                enableTapDragZoom: readSetting.enableTapDragToScaleUp.isTrue,
-                child: index < 0 || index >= state.pageCount
+              builder: (context, index) {
+                final PhotoViewController scaleController = logic.obtainPageScaleController(index);
+                final Widget? item = index < 0 || index >= state.pageCount
                     ? null
                     : readPageState.readPageInfo.mode == ReadMode.online
                         ? _buildDoubleColumnItemInOnlineMode(context, index)
-                        : _buildDoubleColumnItemInLocalMode(context, index),
-              ),
+                        : _buildDoubleColumnItemInLocalMode(context, index);
+                return PhotoViewGalleryPageOptions.customChild(
+                  controller: scaleController,
+                  initialScale: 1.0,
+                  minScale: 1.0,
+                  maxScale: 2.5,
+                  scaleStateCycle: readSetting.enableDoubleTapToScaleUp.isTrue ? logic.scaleStateCycle : null,
+                  enableTapDragZoom: readSetting.enableTapDragToScaleUp.isTrue,
+                  child: item == null ? null : PhotoViewZoomBridge(controller: scaleController, child: item),
+                );
+              },
             );
           }
           return Container();

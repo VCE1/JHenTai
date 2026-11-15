@@ -188,7 +188,9 @@ class ArchiveDownloadService extends GetxController with GridBasePageServiceMixi
       archiveDownloadInfo.cancelToken.cancel();
       archiveDownloadInfo.cancelToken = CancelToken();
       await archiveDownloadInfo.downloadTask?.pause();
-      archiveDownloadInfo.downloadCompleter?.completeError(CancelException());
+      if (archiveDownloadInfo.downloadCompleter?.isCompleted == false) {
+        archiveDownloadInfo.downloadCompleter?.completeError(CancelException());
+      }
       archiveDownloadInfo.speedComputer.pause();
 
       await _updateArchiveStatus(gid, needReUnlock ? ArchiveStatus.needReUnlock : ArchiveStatus.paused);
@@ -231,11 +233,14 @@ class ArchiveDownloadService extends GetxController with GridBasePageServiceMixi
       archiveDownloadInfo.archiveStatus = ArchiveStatus.unlocking;
       archiveDownloadInfo.downloadPageUrl = null;
       archiveDownloadInfo.downloadUrl = null;
+      final JDownloadTask? previousTask = archiveDownloadInfo.downloadTask;
       archiveDownloadInfo.downloadTask = null;
       archiveDownloadInfo.cancelToken.cancel();
       archiveDownloadInfo.cancelToken = CancelToken();
-      await archiveDownloadInfo.downloadTask?.pause();
-      archiveDownloadInfo.downloadCompleter?.completeError(CancelException());
+      await previousTask?.pause();
+      if (archiveDownloadInfo.downloadCompleter?.isCompleted == false) {
+        archiveDownloadInfo.downloadCompleter?.completeError(CancelException());
+      }
 
       await _updateArchiveInDatabase(archive.gid);
       update(['$archiveStatusId::${archive.gid}']);
@@ -692,10 +697,16 @@ class ArchiveDownloadService extends GetxController with GridBasePageServiceMixi
         }
       },
       onDone: () async {
-        archiveDownloadInfos[archive.gid]!.downloadCompleter?.complete();
+        final Completer? completer = archiveDownloadInfos[archive.gid]?.downloadCompleter;
+        if (completer != null && !completer.isCompleted) {
+          completer.complete();
+        }
       },
       onError: (JDownloadException e) async {
-        archiveDownloadInfos[archive.gid]!.downloadCompleter?.completeError(e);
+        final Completer? completer = archiveDownloadInfos[archive.gid]?.downloadCompleter;
+        if (completer != null && !completer.isCompleted) {
+          completer.completeError(e);
+        }
       },
     );
   }
@@ -1102,8 +1113,8 @@ class ArchiveDownloadService extends GetxController with GridBasePageServiceMixi
         archiveDownloadInfo.downloadCompleter = null;
 
         if (e.type == JDownloadExceptionType.fetchContentLengthFailed || e.type == JDownloadExceptionType.downloadFailed) {
-          DioException dioException = e.error;
-          Response? response = dioException.response;
+          final Object? innerError = e.error;
+          final Response? response = innerError is DioException ? innerError.response : null;
 
           /// download too many bytes will cause 410/404
           if (response?.statusCode == 410 || response?.statusCode == 404) {
@@ -1339,11 +1350,13 @@ class ArchiveDownloadService extends GetxController with GridBasePageServiceMixi
   }
 
   Future<void> _deletePackingFileInDisk(ArchiveDownloadedData archive) async {
-    File file = File(computePackingFileDownloadPath(archive));
-    if (await file.exists()) {
-      await file.delete();
+    final String packingPath = computePackingFileDownloadPath(archive);
+    for (final String candidate in [packingPath, '$packingPath.jdtemp', '$packingPath.jdmeta', '$packingPath.jdmeta.tmp', '$packingPath.jdcopy']) {
+      final File file = File(candidate);
+      if (await file.exists()) {
+        await file.delete();
+      }
     }
-    return;
   }
 
   Future<void> _deleteArchiveInDisk(ArchiveDownloadedData archive) async {

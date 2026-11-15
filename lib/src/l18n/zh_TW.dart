@@ -566,6 +566,8 @@ class zh_TW {
       'enableImageMaxKilobytes': '開啟圖片壓縮',
       'imageMaxKilobytes': '圖片大小限制',
       'imageMaxKilobytesHint': '超過此大小的圖片將會被壓縮',
+      'enableAntiMoireFilter': '抗摩爾紋濾鏡',
+      'enableAntiMoireFilterHint': '自適應抑制高解析度漫畫網點縮小時的摩爾紋，放大時自動還原銳度',
       'image': '圖片',
       'screen': '螢幕',
       'preloadDistanceInOnlineMode': '預先載入距離(線上模式)',

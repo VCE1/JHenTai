@@ -14,6 +14,7 @@ import 'package:jhentai/src/extension/widget_extension.dart';
 import 'package:jhentai/src/model/gallery_image.dart';
 import 'package:jhentai/src/setting/advanced_setting.dart';
 import 'package:jhentai/src/setting/style_setting.dart';
+import 'package:jhentai/src/widget/anti_moire_image.dart';
 import 'dart:io' as io;
 
 import 'dart:ui' as ui;
@@ -50,6 +51,7 @@ class EHImage extends StatefulWidget {
   final LoadingWidgetBuilder? loadingWidgetBuilder;
   final CompletedWidgetBuilder? completedWidgetBuilder;
   final bool disableAnimation;
+  final bool enableAntiMoire;
 
   /// If true, an animated image only plays its animation while it is visible in
   /// the viewport; otherwise it stays on its static first frame. This is meant
@@ -73,6 +75,7 @@ class EHImage extends StatefulWidget {
     this.forceFadeIn = false,
     this.maxBytes,
     this.disableAnimation = false,
+    this.enableAntiMoire = false,
     this.animateOnlyWhenVisible = false,
     this.loadingProgressWidgetBuilder,
     this.failedWidgetBuilder,
@@ -98,6 +101,7 @@ class EHImage extends StatefulWidget {
     this.forceFadeIn = false,
     this.maxBytes,
     this.disableAnimation = false,
+    this.enableAntiMoire = false,
     this.animateOnlyWhenVisible = false,
     this.loadingProgressWidgetBuilder,
     this.failedWidgetBuilder,
@@ -254,6 +258,7 @@ class _EHImageState extends State<EHImage> {
             return widget.forceFadeIn || !state.wasSynchronouslyLoaded ? child.fadeIn() : child;
         }
       },
+      filterQuality: FilterQuality.medium,
     );
   }
 
@@ -284,7 +289,10 @@ class _EHImageState extends State<EHImage> {
       fit: widget.fit,
       height: widget.containerHeight,
       width: widget.containerWidth,
-      enableLoadState: widget.loadingWidgetBuilder != null || widget.failedWidgetBuilder != null || widget.completedWidgetBuilder != null,
+      enableLoadState: widget.loadingWidgetBuilder != null ||
+          widget.failedWidgetBuilder != null ||
+          widget.completedWidgetBuilder != null ||
+          widget.enableAntiMoire,
       enableSlideOutPage: widget.enableSlideOutPage,
       borderRadius: widget.borderRadius,
       shape: BoxShape.rectangle,
@@ -347,19 +355,37 @@ class _EHImageState extends State<EHImage> {
   }
 
   Widget _buildExtendedRawImage(ExtendedImageState state) {
+    final ui.Image? image = state.extendedImageInfo?.image;
     FittedSizes fittedSizes = applyBoxFit(
       widget.fit,
-      Size(state.extendedImageInfo!.image.width.toDouble(), state.extendedImageInfo!.image.height.toDouble()),
+      Size((image?.width ?? 0).toDouble(), (image?.height ?? 0).toDouble()),
       Size(widget.containerWidth ?? double.infinity, widget.containerHeight ?? double.infinity),
     );
 
-    return ExtendedRawImage(
-      image: state.extendedImageInfo?.image,
-      height: fittedSizes.destination.height == 0 ? null : fittedSizes.destination.height,
-      width: fittedSizes.destination.width == 0 ? null : fittedSizes.destination.width,
-      scale: state.extendedImageInfo?.scale ?? 1.0,
-      fit: widget.fit,
-    );
+    final double? destWidth = fittedSizes.destination.width == 0 ? null : fittedSizes.destination.width;
+    final double? destHeight = fittedSizes.destination.height == 0 ? null : fittedSizes.destination.height;
+
+    Widget buildFallback(BuildContext context) {
+      return ExtendedRawImage(
+        image: image,
+        height: destHeight,
+        width: destWidth,
+        scale: state.extendedImageInfo?.scale ?? 1.0,
+        fit: widget.fit,
+        filterQuality: FilterQuality.medium,
+      );
+    }
+
+    if (widget.enableAntiMoire && image != null) {
+      return AntiMoireImage(
+        image: image,
+        width: destWidth,
+        height: destHeight,
+        fallbackBuilder: buildFallback,
+      );
+    }
+
+    return buildFallback(context);
   }
 }
 

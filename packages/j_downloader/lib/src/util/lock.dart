@@ -17,9 +17,9 @@ class Lock {
         _currentOperation = item.func.call();
         item.completer.complete(await _currentOperation);
         _currentOperation = null;
-      } catch (e) {
+      } catch (e, s) {
         _currentOperation = null;
-        item.completer.completeError(e);
+        item.completer.completeError(e, s);
       } finally {
         _ss.resume();
       }

@@ -566,6 +566,8 @@ class ko_KR {
       'enableImageMaxKilobytes': 'Enable Image Compression',
       'imageMaxKilobytes': 'Image Max Size',
       'imageMaxKilobytesHint': 'Images larger than this size will be compressed',
+      'enableAntiMoireFilter': '무아레 방지 필터',
+      'enableAntiMoireFilterHint': '고해상도 만화 스크린톤 축소 시 발생하는 무아레 현상을 완화하고 확대 시 선명도를 복원합니다',
       'image': '이미지 기준',
       'screen': '화면 기준',
       'preloadDistanceInOnlineMode': 'Preload Distance(Online)',

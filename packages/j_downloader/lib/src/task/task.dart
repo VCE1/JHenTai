@@ -35,6 +35,8 @@ class JDownloadTask {
 
   String get downloadPath => '$savePath.jdtemp';
 
+  String get metadataPath => '$savePath.jdmeta';
+
   JDownloadTask.newTask({
     required this.url,
     required this.savePath,
@@ -58,6 +60,7 @@ class JDownloadTask {
     _downloadManager = DownloadManager(
       url: url,
       downloadPath: downloadPath,
+      metadataPath: metadataPath,
       savePath: savePath,
       isolateCount: isolateCount,
       connectionTimeout: headConnectionTimeout,
@@ -92,8 +95,15 @@ class JDownloadTask {
       return;
     }
 
-    await _downloadManager.start();
     _status = TaskStatus.downloading;
+    try {
+      await _downloadManager.start();
+    } catch (_) {
+      if (_status == TaskStatus.downloading) {
+        _status = TaskStatus.failed;
+      }
+      rethrow;
+    }
   }
 
   Future<void> pause() async {
@@ -102,12 +112,17 @@ class JDownloadTask {
     }
 
     await _downloadManager.pause();
-    _status = TaskStatus.paused;
+    if (_status != TaskStatus.completed && _status != TaskStatus.disposed) {
+      _status = TaskStatus.paused;
+    }
   }
 
   Future<void> dispose() async {
-    await _downloadManager.dispose();
+    if (_status == TaskStatus.disposed) {
+      return;
+    }
     _status = TaskStatus.disposed;
+    await _downloadManager.dispose();
   }
 
   Future<void> changeIsolateCount(int count) async {

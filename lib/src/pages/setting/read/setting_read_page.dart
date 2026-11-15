@@ -51,6 +51,7 @@ class SettingReadPage extends StatelessWidget {
                   _buildTapZoneStyle(context).center(),
                   _buildEnableImageMaxKilobytes().center(),
                   if (readSetting.enableMaxImageKilobyte.isTrue) _buildImageMaxKilobytes(context).fadeIn(const Key('imageMaxKilobytes')).center(),
+                  _buildEnableAntiMoireFilter().center(),
                   if (GetPlatform.isDesktop) _buildUseThirdPartyViewer().center(),
                   if (GetPlatform.isDesktop) _buildThirdPartyViewerPath().center(),
                   if (GetPlatform.isDesktop) _buildKeyboardShortcuts(context).center(),
@@ -291,6 +292,15 @@ class SettingReadPage extends StatelessWidget {
       title: Text('enableImageMaxKilobytes'.tr),
       value: readSetting.enableMaxImageKilobyte.value,
       onChanged: readSetting.saveEnableMaxImageKilobyte,
+    );
+  }
+
+  Widget _buildEnableAntiMoireFilter() {
+    return SwitchListTile(
+      title: Text('enableAntiMoireFilter'.tr),
+      subtitle: Text('enableAntiMoireFilterHint'.tr),
+      value: readSetting.enableAntiMoireFilter.value,
+      onChanged: readSetting.saveEnableAntiMoireFilter,
     );
   }
 

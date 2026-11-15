@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jhentai/src/model/read_page_info.dart';
+import 'package:jhentai/src/widget/anti_moire_image.dart';
 import 'package:jhentai/src/widget/eh_wheel_scroll_listener.dart';
+import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 
 import '../../../../setting/read_setting.dart';
@@ -30,22 +32,29 @@ class HorizontalPageLayout extends BaseLayout {
             ? readSetting.preloadPageCount.value.toDouble()
             : readSetting.preloadPageCountLocal.value.toDouble(),
         reverse: logic.readPageLogic.isInRight2LeftDirection,
-        builder: (context, index) => PhotoViewGalleryPageOptions.customChild(
-          initialScale: 1.0,
-          minScale: 1.0,
-          maxScale: 2.5,
-          scaleStateCycle: readSetting.enableDoubleTapToScaleUp.isTrue ? logic.scaleStateCycle : null,
-          enableTapDragZoom: readSetting.enableTapDragToScaleUp.isTrue,
-          child: Obx(() {
-            Widget item = readPageState.readPageInfo.mode == ReadMode.online ? buildItemInOnlineMode(context, index) : buildItemInLocalMode(context, index);
+        builder: (context, index) {
+          final PhotoViewController scaleController = logic.obtainPageScaleController(index);
+          return PhotoViewGalleryPageOptions.customChild(
+            controller: scaleController,
+            initialScale: 1.0,
+            minScale: 1.0,
+            maxScale: 2.5,
+            scaleStateCycle: readSetting.enableDoubleTapToScaleUp.isTrue ? logic.scaleStateCycle : null,
+            enableTapDragZoom: readSetting.enableTapDragToScaleUp.isTrue,
+            child: PhotoViewZoomBridge(
+              controller: scaleController,
+              child: Obx(() {
+                Widget item = readPageState.readPageInfo.mode == ReadMode.online ? buildItemInOnlineMode(context, index) : buildItemInLocalMode(context, index);
 
-            if (logic.readPageLogic.isInFitWidthReadDirection) {
-              item = Center(child: SingleChildScrollView(controller: ScrollController(), child: item));
-            }
+                if (logic.readPageLogic.isInFitWidthReadDirection) {
+                  item = Center(child: SingleChildScrollView(controller: ScrollController(), child: item));
+                }
 
-            return item;
-          }),
-        ),
+                return item;
+              }),
+            ),
+          );
+        },
       ),
     );
   }

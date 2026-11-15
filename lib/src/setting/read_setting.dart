@@ -52,6 +52,7 @@ class ReadSetting with JHLifeCircleBeanWithConfigStorage implements JHLifeCircle
           : true.obs;
   RxInt maxImageKilobyte = (1024 * 5).obs;
   RxBool autoDetectWebtoon = false.obs;
+  RxBool enableAntiMoireFilter = false.obs;
 
   static bool isListDirection(ReadDirection d) =>
       d == ReadDirection.top2bottomList ||
@@ -162,6 +163,7 @@ class ReadSetting with JHLifeCircleBeanWithConfigStorage implements JHLifeCircle
     maxImageKilobyte.value = map['maxImageKilobyte'] ?? maxImageKilobyte.value;
     enableOrientationSpecificReadDirection.value = map['enableOrientationSpecificReadDirection'] ?? enableOrientationSpecificReadDirection.value;
     autoDetectWebtoon.value = map['autoDetectWebtoon'] ?? autoDetectWebtoon.value;
+    enableAntiMoireFilter.value = map['enableAntiMoireFilter'] ?? enableAntiMoireFilter.value;
     /// On first load, migrate existing readDirection to both portrait and landscape
     portraitReadDirection.value = ReadDirection.values[map['portraitReadDirection'] ?? map['readDirection']];
     landscapeReadDirection.value = ReadDirection.values[map['landscapeReadDirection'] ?? map['readDirection']];
@@ -206,6 +208,7 @@ class ReadSetting with JHLifeCircleBeanWithConfigStorage implements JHLifeCircle
       'maxImageKilobyte': maxImageKilobyte.value,
       'enableOrientationSpecificReadDirection': enableOrientationSpecificReadDirection.value,
       'autoDetectWebtoon': autoDetectWebtoon.value,
+      'enableAntiMoireFilter': enableAntiMoireFilter.value,
       'portraitReadDirection': portraitReadDirection.value.index,
       'landscapeReadDirection': landscapeReadDirection.value.index,
     });
@@ -449,6 +452,12 @@ class ReadSetting with JHLifeCircleBeanWithConfigStorage implements JHLifeCircle
   Future<void> saveAutoDetectWebtoon(bool value) async {
     log.debug('saveAutoDetectWebtoon:$value');
     autoDetectWebtoon.value = value;
+    await saveBeanConfig();
+  }
+
+  Future<void> saveEnableAntiMoireFilter(bool value) async {
+    log.debug('saveEnableAntiMoireFilter:$value');
+    enableAntiMoireFilter.value = value;
     await saveBeanConfig();
   }
 

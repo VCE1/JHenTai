@@ -9,6 +9,9 @@ on:
       - v*
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 # If previous workflow is still running, we push again, we will cancel the previous workflow
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
@@ -253,6 +256,8 @@ jobs:
     name: Publish
     needs: Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -334,4 +339,65 @@ jobs:
           git add altsource/AltSource.json
           git commit -m "Update AltSource.json for version ${{ needs.Build.outputs.version }}"
           git push origin HEAD:master
+
+  PublishLatest:
+    if: ${{ always() && !cancelled() && !startsWith(github.ref, 'refs/tags/') && needs.Build.result != 'skipped' }}
+    name: Publish Direct Downloads (Pre-release)
+    needs: Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Make tmp dir
+        run: mkdir -p /tmp/artifacts
+
+      - name: Download built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/artifacts
+
+      - name: Publish uncompressed APK/IPA & desktop binaries to rolling pre-release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          ASSETS=(
+            /tmp/artifacts/release-Android/*.apk
+            /tmp/artifacts/release-iOS/*.ipa
+            /tmp/artifacts/release-macOS/*.dmg
+            /tmp/artifacts/release-Windows/*.zip
+            /tmp/artifacts/release-Linux-x64-deb/*.deb
+            /tmp/artifacts/release-Linux-arm64-deb/*.deb
+          )
+          if [ ${#ASSETS[@]} -eq 0 ]; then
+            echo "No built release assets found in /tmp/artifacts" >&2
+            ls -R /tmp/artifacts || true
+            exit 1
+          fi
+
+          TAG="latest-build"
+          SHORT_SHA="${GITHUB_SHA::7}"
+          NOTES="Automated rolling build for commit \`${SHORT_SHA}\` (\`${{ github.ref_name }}\`). Direct raw installers (.apk / .ipa / desktop packages) without extra Actions artifact zip wrapping."
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            while IFS= read -r asset; do
+              [ -n "$asset" ] && gh release delete-asset "$TAG" "$asset" -y || true
+            done < <(gh release view "$TAG" --json assets --jq '.assets[].name')
+            gh api -X PATCH "repos/${{ github.repository }}/git/refs/tags/${TAG}" -f sha="${GITHUB_SHA}" -F force=true || true
+            gh release edit "$TAG" --target "${GITHUB_SHA}" --title "Latest Build (${SHORT_SHA})" --notes "$NOTES" --prerelease
+          else
+            gh release create "$TAG" --target "${GITHUB_SHA}" --title "Latest Build (${SHORT_SHA})" --notes "$NOTES" --prerelease
+          fi
+
+          gh release upload "$TAG" "${ASSETS[@]}" --clobber
+
+          {
+            echo "### Direct Downloads (Uncompressed Releases Assets)"
+            echo ""
+            for f in "${ASSETS[@]}"; do
+              name=$(basename "$f")
+              echo "- [${name}](https://github.com/${{ github.repository }}/releases/download/${TAG}/${name})"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
 

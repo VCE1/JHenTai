@@ -566,6 +566,8 @@ class zh_CN {
       'enableImageMaxKilobytes': '开启图片压缩',
       'imageMaxKilobytes': '图片大小限制',
       'imageMaxKilobytesHint': '超过此大小的图片将会被压缩',
+      'enableAntiMoireFilter': '抗摩尔纹滤镜',
+      'enableAntiMoireFilterHint': '自适应抑制高分辨率漫画网点缩小时的摩尔纹，放大时自动还原锐度',
       'image': '图片',
       'screen': '屏幕',
       'preloadDistanceInOnlineMode': '预载距离(在线模式)',

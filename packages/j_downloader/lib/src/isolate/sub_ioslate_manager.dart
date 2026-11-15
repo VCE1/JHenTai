@@ -16,8 +16,11 @@ class SubIsolateManager {
   final SendPort _mainSendPort;
 
   late final ProxyConfig? _proxyConfig;
+  Dio? _dio;
 
   CancelToken? _cancelToken;
+  bool _inDownload = false;
+  bool _closing = false;
 
   SubIsolateManager({
     required SendPort mainSendPort,
@@ -33,6 +36,7 @@ class SubIsolateManager {
           message = message as MainIsolateMessage<ProxyConfig?>;
           _proxyConfig = message.data;
           SocksProxy.initProxy(findProxy: ProxyConfig.toFindProxy(_proxyConfig));
+          _dio = Dio();
           _mainSendPort.send(SubIsolateMessage<Null>(SubIsolateMessageType.inited, null));
           break;
         case MainIsolateMessageType.download:
@@ -42,18 +46,25 @@ class SubIsolateManager {
                 String downloadPath,
                 ({int start, int end})? downloadRange,
                 int fileWriteOffset,
-                int preservedMetadataHeaderSize,
+                int dataOffset,
+                Duration connectionTimeout,
+                Duration receiveTimeout,
               })>;
           download(
             message.data.url,
             message.data.downloadPath,
             message.data.downloadRange,
             message.data.fileWriteOffset,
-            message.data.preservedMetadataHeaderSize,
+            message.data.dataOffset,
+            message.data.connectionTimeout,
+            message.data.receiveTimeout,
           );
           break;
         case MainIsolateMessageType.close:
-          if (_cancelToken == null || _cancelToken!.isCancelled) {
+          _closing = true;
+          if (!_inDownload || _cancelToken == null || _cancelToken!.isCancelled) {
+            _dio?.close(force: true);
+            _dio = null;
             _mainSendPort.send(SubIsolateMessage<Null>(SubIsolateMessageType.closeReady, null));
           } else {
             _cancelToken!.cancel();
@@ -65,50 +76,88 @@ class SubIsolateManager {
     });
   }
 
+  DioException _sanitizeDioException(DioException e) {
+    return DioException(
+      requestOptions: RequestOptions(
+        path: e.requestOptions.path,
+        baseUrl: e.requestOptions.baseUrl,
+        method: e.requestOptions.method,
+      ),
+      response: e.response == null
+          ? null
+          : Response<dynamic>(
+              requestOptions: RequestOptions(path: e.requestOptions.path),
+              statusCode: e.response?.statusCode,
+              statusMessage: e.response?.statusMessage,
+            ),
+      type: e.type,
+      error: e.error?.toString(),
+      message: e.message,
+    );
+  }
+
   Future<void> download(
     String url,
     String downloadPath,
     ({int start, int end})? downloadRange,
     int fileWriteOffset,
-    int preservedMetadataHeaderSize,
+    int dataOffset,
+    Duration connectionTimeout,
+    Duration receiveTimeout,
   ) async {
-    _cancelToken ??= CancelToken();
-    Response<ResponseBody> response;
+    if (_closing) {
+      _mainSendPort.send(SubIsolateMessage<Null>(SubIsolateMessageType.closeReady, null));
+      return;
+    }
 
+    _inDownload = true;
+    final CancelToken cancelToken = CancelToken();
+    _cancelToken = cancelToken;
+
+    final Dio dio = _dio ??= Dio();
+    dio.options.connectTimeout = connectionTimeout;
+    dio.options.receiveTimeout = receiveTimeout;
+
+    Response<ResponseBody> response;
     _mainSendPort.send(SubIsolateMessage<Null>(SubIsolateMessageType.begin, null));
+
     try {
-      final Map<String, dynamic>? headers = downloadRange == null
-          ? null
-          : {'Range': 'bytes=${downloadRange.start}-${downloadRange.end - 1}'};
-      response = await Dio().get(
+      final Map<String, dynamic>? headers =
+          downloadRange == null ? null : {'Range': 'bytes=${downloadRange.start}-${downloadRange.end - 1}'};
+      response = await dio.get<ResponseBody>(
         url,
         options: Options(
-          sendTimeout: const Duration(seconds: 5),
+          sendTimeout: connectionTimeout > Duration.zero ? connectionTimeout : const Duration(seconds: 15),
+          receiveTimeout: receiveTimeout,
           preserveHeaderCase: true,
           headers: headers,
           responseType: ResponseType.stream,
         ),
-        cancelToken: _cancelToken,
+        cancelToken: cancelToken,
       );
     } on DioException catch (e) {
-      _cancelToken = null;
+      _inDownload = false;
+      if (identical(_cancelToken, cancelToken)) {
+        _cancelToken = null;
+      }
 
-      if (e.type == DioExceptionType.cancel) {
+      if (e.type == DioExceptionType.cancel || _closing) {
+        if (_closing) {
+          _dio?.close(force: true);
+          _dio = null;
+        }
         _mainSendPort.send(SubIsolateMessage<Null>(SubIsolateMessageType.closeReady, null));
       } else {
-        e.response?.data = null;
-        e.requestOptions.cancelToken = null;
         _mainSendPort.send(
           SubIsolateMessage<JDownloadException>(
             SubIsolateMessageType.error,
             JDownloadException(
               JDownloadExceptionType.downloadFailed,
-              error: e,
+              error: _sanitizeDioException(e),
             ),
           ),
         );
       }
-
       return;
     }
 
@@ -123,43 +172,83 @@ class SubIsolateManager {
       if (statusCode == HttpStatus.partialContent) {
         // Range honored.
       } else if (statusCode == HttpStatus.ok) {
-        // Server ignored Range and returned the full stream from byte 0;
-        // consume this response seamlessly from the beginning instead of aborting.
+        // Server ignored Range and returned full stream from byte 0.
         resetFromStart = true;
-        actualWriteOffset = preservedMetadataHeaderSize;
+        actualWriteOffset = dataOffset;
         expectedBytes = headerContentLength;
       } else {
-        _cancelToken!.cancel();
+        _inDownload = false;
         _cancelToken = null;
-
-        return _mainSendPort.send(
+        _drainResponseQuietly(response);
+        _mainSendPort.send(
           SubIsolateMessage<JDownloadException>(
             SubIsolateMessageType.error,
-            JDownloadException(JDownloadExceptionType.serverNotSupport),
+            JDownloadException(
+              JDownloadExceptionType.serverNotSupport,
+              error: _statusException(url, statusCode, response.statusMessage),
+            ),
           ),
         );
+        return;
       }
     } else if (statusCode != HttpStatus.ok && statusCode != HttpStatus.partialContent) {
-      _cancelToken!.cancel();
+      _inDownload = false;
       _cancelToken = null;
-
-      return _mainSendPort.send(
+      _drainResponseQuietly(response);
+      _mainSendPort.send(
         SubIsolateMessage<JDownloadException>(
           SubIsolateMessageType.error,
-          JDownloadException(JDownloadExceptionType.downloadFailed),
+          JDownloadException(
+            JDownloadExceptionType.downloadFailed,
+            error: _statusException(url, statusCode, response.statusMessage),
+          ),
         ),
       );
+      return;
+    }
+
+    if (_closing || cancelToken.isCancelled) {
+      _inDownload = false;
+      _cancelToken = null;
+      _drainResponseQuietly(response);
+      if (_closing) {
+        _dio?.close(force: true);
+        _dio = null;
+      }
+      _mainSendPort.send(SubIsolateMessage<Null>(SubIsolateMessageType.closeReady, null));
+      return;
     }
 
     _mainSendPort.send(SubIsolateMessage(SubIsolateMessageType.log, LogEvent(Level.debug, 'open download file')));
 
-    File downloadFile = File(downloadPath);
-    RandomAccessFile raf = await downloadFile.open(mode: FileMode.writeOnlyAppend);
-    await raf.setPosition(actualWriteOffset);
-
-    if (_cancelToken?.isCancelled ?? false) {
-      await raf.close().catchError((_) => raf);
+    final File downloadFile = File(downloadPath);
+    RandomAccessFile? raf;
+    try {
+      raf = await downloadFile.open(mode: FileMode.writeOnlyAppend);
+      await raf.setPosition(actualWriteOffset);
+    } catch (e) {
+      await raf?.close().catchError((_) => raf!);
+      _inDownload = false;
       _cancelToken = null;
+      _drainResponseQuietly(response);
+      _mainSendPort.send(
+        SubIsolateMessage<JDownloadException>(
+          SubIsolateMessageType.error,
+          JDownloadException(JDownloadExceptionType.writeDownloadFileFailed, error: e.toString()),
+        ),
+      );
+      return;
+    }
+
+    if (_closing || cancelToken.isCancelled) {
+      await raf.close().catchError((_) => raf!);
+      _inDownload = false;
+      _cancelToken = null;
+      _drainResponseQuietly(response);
+      if (_closing) {
+        _dio?.close(force: true);
+        _dio = null;
+      }
       _mainSendPort.send(SubIsolateMessage<Null>(SubIsolateMessageType.closeReady, null));
       return;
     }
@@ -173,20 +262,79 @@ class SubIsolateManager {
 
     int writtenBytes = 0;
     Future<void>? asyncWrite;
-    bool closed = false;
-    Future<void> close() async {
-      if (!closed) {
-        closed = true;
-        await asyncWrite;
-        await raf.close().catchError((_) => raf);
-        _mainSendPort.send(SubIsolateMessage(SubIsolateMessageType.log, LogEvent(Level.debug, 'close download file')));
+    bool rafClosed = false;
+    bool finished = false;
+    Timer? idleTimer;
+    StreamSubscription<Uint8List>? subscription;
+    final Duration idleTimeout = receiveTimeout > Duration.zero ? receiveTimeout : const Duration(seconds: 30);
+
+    Future<void> closeRaf() async {
+      if (rafClosed) {
+        return;
       }
+      rafClosed = true;
+      await asyncWrite;
+      if (raf != null) {
+        await raf!.close().catchError((_) => raf!);
+        raf = null;
+      }
+      _mainSendPort.send(SubIsolateMessage(SubIsolateMessageType.log, LogEvent(Level.debug, 'close download file')));
     }
 
-    Stream<Uint8List> stream = response.data!.stream;
-    late StreamSubscription subscription;
+    Future<void> terminate(SubIsolateMessage Function() messageBuilder, {bool forceCloseHttp = false}) async {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      idleTimer?.cancel();
+      idleTimer = null;
+      await subscription?.cancel().catchError((_) {});
+      await closeRaf();
+      if (forceCloseHttp || _closing) {
+        // Close socket when aborting a stalled stream or shutting down the isolate.
+        _dio?.close(force: true);
+        _dio = null;
+      }
+      _inDownload = false;
+      if (identical(_cancelToken, cancelToken)) {
+        _cancelToken = null;
+      }
+      _mainSendPort.send(messageBuilder());
+    }
+
+    void resetIdleTimer() {
+      idleTimer?.cancel();
+      if (finished || _closing || cancelToken.isCancelled) {
+        return;
+      }
+      idleTimer = Timer(idleTimeout, () {
+        if (finished || _closing || cancelToken.isCancelled) {
+          return;
+        }
+        terminate(
+          () => SubIsolateMessage<JDownloadException>(
+            SubIsolateMessageType.error,
+            JDownloadException(
+              JDownloadExceptionType.receiveDataFailed,
+              error: DioException.receiveTimeout(
+                timeout: idleTimeout,
+                requestOptions: RequestOptions(path: url),
+              ),
+            ),
+          ),
+          forceCloseHttp: true,
+        );
+      });
+    }
+
+    resetIdleTimer();
+
+    final Stream<Uint8List> stream = response.data!.stream;
     subscription = stream.listen(
-      (data) {
+      (Uint8List data) {
+        if (finished || _closing || cancelToken.isCancelled) {
+          return;
+        }
         Uint8List chunk = data;
         if (downloadRange != null && !resetFromStart && expectedBytes != null) {
           final int remaining = expectedBytes - writtenBytes;
@@ -201,64 +349,82 @@ class SubIsolateManager {
           return;
         }
 
-        subscription.pause();
-        asyncWrite = raf.writeFrom(chunk).then((result) {
+        idleTimer?.cancel();
+        subscription?.pause();
+        asyncWrite = raf!.writeFrom(chunk).then((RandomAccessFile result) {
           writtenBytes += chunk.length;
-          _mainSendPort.send(SubIsolateMessage<int>(SubIsolateMessageType.progress, chunk.length));
           raf = result;
-          if (_cancelToken != null && !_cancelToken!.isCancelled) {
-            subscription.resume();
+          if (!finished && !_closing && !cancelToken.isCancelled) {
+            _mainSendPort.send(SubIsolateMessage<int>(SubIsolateMessageType.progress, chunk.length));
+            resetIdleTimer();
+            subscription?.resume();
           }
-        }).catchError((e) async {
-          await subscription.cancel().catchError((_) {});
-          closed = true;
-          await raf.close().catchError((_) => raf);
-          _mainSendPort.send(SubIsolateMessage(SubIsolateMessageType.log, LogEvent(Level.debug, 'close download file')));
-          _mainSendPort.send(
-            SubIsolateMessage<JDownloadException>(
+        }).catchError((Object e) {
+          terminate(
+            () => SubIsolateMessage<JDownloadException>(
               SubIsolateMessageType.error,
-              JDownloadException(JDownloadExceptionType.writeDownloadFileFailed, error: e),
+              JDownloadException(JDownloadExceptionType.writeDownloadFileFailed, error: e.toString()),
             ),
+            forceCloseHttp: true,
           );
         });
       },
       onDone: () async {
         await asyncWrite;
-        if (_cancelToken?.isCancelled ?? false) {
-          await close();
+        if (finished) {
           return;
         }
-        closed = true;
-        await raf.close().catchError((_) => raf);
-        _mainSendPort.send(SubIsolateMessage(SubIsolateMessageType.log, LogEvent(Level.debug, 'close download file')));
-        _cancelToken = null;
+        if (_closing || cancelToken.isCancelled) {
+          await terminate(() => SubIsolateMessage<Null>(SubIsolateMessageType.closeReady, null));
+          return;
+        }
         if (expectedBytes != null && writtenBytes < expectedBytes) {
-          _mainSendPort.send(
-            SubIsolateMessage<JDownloadException>(
+          await terminate(
+            () => SubIsolateMessage<JDownloadException>(
               SubIsolateMessageType.error,
               JDownloadException(
                 JDownloadExceptionType.receiveDataFailed,
-                error: StateError('Unexpected EOF: expected $expectedBytes bytes, got $writtenBytes bytes'),
+                error: 'Unexpected EOF: expected $expectedBytes bytes, got $writtenBytes bytes',
               ),
             ),
           );
           return;
         }
-        _mainSendPort.send(SubIsolateMessage<Null>(SubIsolateMessageType.done, null));
+        await terminate(() => SubIsolateMessage<Null>(SubIsolateMessageType.done, null));
       },
-      onError: (e) async {
-        await close();
-        _cancelToken = null;
-        _mainSendPort.send(SubIsolateMessage(SubIsolateMessageType.error, JDownloadException(JDownloadExceptionType.receiveDataFailed, error: e)));
+      onError: (Object e) {
+        terminate(
+          () => SubIsolateMessage<JDownloadException>(
+            SubIsolateMessageType.error,
+            JDownloadException(JDownloadExceptionType.receiveDataFailed, error: e.toString()),
+          ),
+        );
       },
       cancelOnError: true,
     );
 
-    _cancelToken?.whenCancel.then((_) async {
-      await subscription.cancel();
-      await close();
-      _mainSendPort.send(SubIsolateMessage<Null>(SubIsolateMessageType.closeReady, null));
+    cancelToken.whenCancel.then((_) {
+      terminate(() => SubIsolateMessage<Null>(SubIsolateMessageType.closeReady, null));
     });
+  }
+
+  DioException _statusException(String url, int statusCode, String? statusMessage) {
+    final RequestOptions req = RequestOptions(path: url);
+    return DioException.badResponse(
+      statusCode: statusCode,
+      requestOptions: req,
+      response: Response<dynamic>(
+        requestOptions: req,
+        statusCode: statusCode,
+        statusMessage: statusMessage,
+      ),
+    );
+  }
+
+  void _drainResponseQuietly(Response<ResponseBody> response) {
+    try {
+      response.data?.stream.listen((_) {}, onError: (_) {}).cancel();
+    } catch (_) {}
   }
 }
 

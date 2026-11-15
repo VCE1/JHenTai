@@ -8,6 +8,7 @@ import 'package:zoom_view/zoom_view.dart';
 
 import '../../../../setting/read_setting.dart';
 import '../../../../utils/screen_size_util.dart';
+import '../../../../widget/anti_moire_image.dart';
 import '../../../../widget/eh_wheel_speed_controller_for_read_page.dart';
 import '../base/base_layout.dart';
 import 'vertical_list_layout_logic.dart';
@@ -34,21 +35,24 @@ class VerticalListLayout extends BaseLayout {
           maxScale: 2.5,
           scaleStateCycle: readSetting.enableDoubleTapToScaleUp.isTrue ? logic.scaleStateCycle : null,
           enableTapDragZoom: readSetting.enableTapDragToScaleUp.isTrue,
-          child: EHWheelSpeedControllerForReadPage(
-            scrollOffsetController: state.scrollOffsetController,
-            stopScrollWhenCtrlPressed: true,
-            child: ScrollablePositionedList.separated(
-              physics: const ClampingScrollPhysics(),
-              minCacheExtent: readPageState.readPageInfo.mode == ReadMode.online
-                  ? readSetting.preloadDistance * screenHeight * 1
-                  : readSetting.preloadDistanceLocal * screenHeight * 1,
-              initialScrollIndex: readPageState.readPageInfo.initialIndex,
-              itemCount: readPageState.readPageInfo.pageCount,
-              itemScrollController: state.itemScrollController,
-              itemPositionsListener: state.itemPositionsListener,
+          child: PhotoViewZoomBridge(
+            controller: state.photoViewController,
+            child: EHWheelSpeedControllerForReadPage(
               scrollOffsetController: state.scrollOffsetController,
-              itemBuilder: _imageBuilder,
-              separatorBuilder: (_, __) => Obx(() => SizedBox(height: readSetting.imageSpace.value.toDouble())),
+              stopScrollWhenCtrlPressed: true,
+              child: ScrollablePositionedList.separated(
+                physics: const ClampingScrollPhysics(),
+                minCacheExtent: readPageState.readPageInfo.mode == ReadMode.online
+                    ? readSetting.preloadDistance * screenHeight * 1
+                    : readSetting.preloadDistanceLocal * screenHeight * 1,
+                initialScrollIndex: readPageState.readPageInfo.initialIndex,
+                itemCount: readPageState.readPageInfo.pageCount,
+                itemScrollController: state.itemScrollController,
+                itemPositionsListener: state.itemPositionsListener,
+                scrollOffsetController: state.scrollOffsetController,
+                itemBuilder: _imageBuilder,
+                separatorBuilder: (_, __) => Obx(() => SizedBox(height: readSetting.imageSpace.value.toDouble())),
+              ),
             ),
           ),
         ),

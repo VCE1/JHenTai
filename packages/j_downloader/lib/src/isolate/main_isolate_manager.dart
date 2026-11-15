@@ -91,17 +91,28 @@ class MainIsolateManager {
         case SubIsolateMessageType.done:
           _free = true;
           _onDone?.call();
+          break;
         case SubIsolateMessageType.closeReady:
         case SubIsolateMessageType.closed:
-          message = message as SubIsolateMessage<Null>;
+          final bool exitedUnexpectedly = message.type == SubIsolateMessageType.closed && !_free && _closeCompleter == null;
           _mainReceivePort?.close();
           _isolate?.kill();
           _isolate = null;
           _subSendPort = null;
           _ready = false;
           _free = true;
-          _closeCompleter?.complete();
+          if (_closeCompleter != null && !_closeCompleter!.isCompleted) {
+            _closeCompleter!.complete();
+          }
           _closeCompleter = null;
+          if (exitedUnexpectedly) {
+            _onError?.call(
+              JDownloadException(
+                JDownloadExceptionType.downloadFailed,
+                error: 'Download isolate exited unexpectedly',
+              ),
+            );
+          }
           break;
         case SubIsolateMessageType.log:
           message = message as SubIsolateMessage<LogEvent>;
@@ -124,11 +135,13 @@ class MainIsolateManager {
     String downloadPath,
     ({int start, int end})? downloadRange,
     int fileWriteOffset,
-    int preservedMetadataHeaderSize,
+    int dataOffset,
+    Duration connectionTimeout,
+    Duration receiveTimeout,
   ) {
     assert(_isolate != null && _mainReceivePort != null && _subSendPort != null && _ready);
 
-    if (!_free) {
+    if (!_free || _closeCompleter != null) {
       return;
     }
     _free = false;
@@ -141,7 +154,9 @@ class MainIsolateManager {
           downloadPath: downloadPath,
           downloadRange: downloadRange,
           fileWriteOffset: fileWriteOffset,
-          preservedMetadataHeaderSize: preservedMetadataHeaderSize,
+          dataOffset: dataOffset,
+          connectionTimeout: connectionTimeout,
+          receiveTimeout: receiveTimeout,
         ),
       ),
     );

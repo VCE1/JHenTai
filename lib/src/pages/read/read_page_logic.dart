@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
@@ -44,6 +44,7 @@ import '../../setting/read_setting.dart';
 import '../../utils/eh_spider_parser.dart';
 import '../../utils/route_util.dart';
 import '../../utils/toast_util.dart';
+import '../../widget/anti_moire_image.dart';
 import '../../widget/auto_mode_interval_dialog.dart';
 import '../../widget/eh_image.dart';
 import '../../widget/loading_state_indicator.dart';
@@ -133,6 +134,9 @@ class ReadPageLogic extends GetxController with WidgetsBindingObserver, GalleryI
     }
 
     WidgetsBinding.instance.addObserver(this);
+    if (readSetting.enableAntiMoireFilter.isTrue) {
+      unawaited(AntiMoireShader.ensureLoaded());
+    }
 
     Timer(const Duration(milliseconds: 120), () {
       if (inited && !delayInitCompleter.isCompleted) {

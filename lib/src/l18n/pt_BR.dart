@@ -567,6 +567,8 @@ class pt_BR {
       'enableImageMaxKilobytes': 'Enable Image Compression',
       'imageMaxKilobytes': 'Image Max Size',
       'imageMaxKilobytesHint': 'Images larger than this size will be compressed',
+      'enableAntiMoireFilter': 'Filtro Anti-Moiré',
+      'enableAntiMoireFilterHint': 'Suprime adaptativamente o moiré em páginas de alta resolução reduzidas e restaura a nitidez ao ampliar',
       'image': 'Imagem',
       'screen': 'Tela',
       'preloadDistanceInOnlineMode': 'Preload Distance(Online)',
