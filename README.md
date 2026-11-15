@@ -1,3 +1,10 @@
+> [!NOTE]
+> **Personal Fork Notice (`moe.vce1.jhentai`)**
+>
+> This repository is an **LLM-assisted personal-use modification** derived from upstream [jiangtian616/JHenTai](https://github.com/jiangtian616/JHenTai) under the Apache License 2.0 (with independent package/bundle ID `moe.vce1.jhentai` and dedicated release signing for co-existence and seamless self-updates).
+>
+> **Issues, Feature Requests, PRs, and support inquiries are NOT accepted here.** For issues regarding the original app, please visit upstream; if you fork or build from this repo, please keep Apache-2.0 notices intact.
+
 ![platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20MacOS%20%7C%20Linux-brightgreen)
 ![last-commit](https://img.shields.io/github/last-commit/jiangtian616/JHenTai)
 [![downloads](https://img.shields.io/github/downloads/jiangtian616/JHenTai/total)](https://github.com/jiangtian616/JHenTai/releases)

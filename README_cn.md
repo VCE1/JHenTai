@@ -1,3 +1,10 @@
+> [!NOTE]
+> **个人自用魔改分支说明（包名 `moe.vce1.jhentai`）**
+>
+> 本仓库是基于上游项目 [jiangtian616/JHenTai](https://github.com/jiangtian616/JHenTai)（Apache License 2.0 协议）**使用 LLM 辅助修改的个人自用分支**，采用独立包名 `moe.vce1.jhentai` 与个人固定签名（用于与原版双开共存及后续无缝覆盖升级）。
+>
+> **本仓库纯属个人修改自用，不接受任何 Issue、Feature Request、PR 或使用支持请求**；原版相关问题请移步上游仓库反馈。仓库保留上游 Apache 2.0 授权及版权归属声明。
+
 ![platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20MacOS%20%7C%20Linux-brightgreen)
 ![last-commit](https://img.shields.io/github/last-commit/jiangtian616/JHenTai)
 [![downloads](https://img.shields.io/github/downloads/jiangtian616/JHenTai/total)](https://github.com/jiangtian616/JHenTai/releases)

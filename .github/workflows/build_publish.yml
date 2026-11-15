@@ -142,13 +142,21 @@ jobs:
         id: get_version
         shell: bash
         run: |
-          echo "version=$(head -n 5 pubspec.yaml | tail -n 1 | cut -d ' ' -f 2)" >> $GITHUB_OUTPUT
+          VERSION_LINE=$(head -n 5 pubspec.yaml | tail -n 1 | tr -d '\r' | cut -d ' ' -f 2)
+          echo "version=$VERSION_LINE" >> $GITHUB_OUTPUT
+          BASE_BUILD=$(echo "$VERSION_LINE" | sed -n 's/.*+\([0-9]*\).*/\1/p')
+          BASE_BUILD=${BASE_BUILD:-1}
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "build_number=$BASE_BUILD" >> $GITHUB_OUTPUT
+          else
+            echo "build_number=$((BASE_BUILD + GITHUB_RUN_NUMBER))" >> $GITHUB_OUTPUT
+          fi
           echo "arch=$(echo $RUNNER_ARCH | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
       # Build Android .apk
       - name: Build Android
         if: matrix.target == 'Android'
         run: |
-          flutter build apk -t lib/src/main.dart --release --split-per-abi
+          flutter build apk -t lib/src/main.dart --release --split-per-abi --build-number=${{ steps.get_version.outputs.build_number }}
           cd build/app/outputs/apk/release
           mv app-arm64-v8a-release.apk JHenTai-${{ steps.get_version.outputs.version }}-arm64-v8a.apk
           mv app-armeabi-v7a-release.apk JHenTai-${{ steps.get_version.outputs.version }}-armeabi-v7a.apk
@@ -161,7 +169,7 @@ jobs:
           cd ios
           pod update
           cd ..
-          flutter build ios -t lib/src/main.dart --release --no-codesign
+          flutter build ios -t lib/src/main.dart --release --no-codesign --build-number=${{ steps.get_version.outputs.build_number }}
           sh thin-payload.sh build/ios/iphoneos/*.app
           cd build
           mkdir -p Payload
@@ -373,7 +381,7 @@ jobs:
 
           TAG="latest-build"
           SHORT_SHA="${GITHUB_SHA::7}"
-          NOTES="Automated rolling build for commit \`${SHORT_SHA}\` (\`${{ github.ref_name }}\`). Direct raw installers (.apk / .ipa / desktop packages) without extra Actions artifact zip wrapping."
+          NOTES="Personal LLM-assisted fork of jiangtian616/JHenTai (\`moe.vce1.jhentai\`, commit \`${SHORT_SHA}\` on \`${{ github.ref_name }}\`). Direct raw installers (.apk / .ipa / desktop packages). Issues/PRs/support requests are NOT accepted."
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             while IFS= read -r asset; do
